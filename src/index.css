@@ -1,0 +1,326 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base Theme - Clean & Professional */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 142 76% 36%;
+    /* Vibrant Green */
+    --primary-foreground: 355.7 100% 97.3%;
+
+    --secondary: 142 20% 96%;
+    --secondary-foreground: 142 30% 20%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 142 30% 96%;
+    --accent-foreground: 142 30% 20%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 142 76% 36%;
+
+    --radius: 1rem;
+
+    /* Status Colors */
+    --status-healthy: 142 76% 36%;
+    --status-repairable: 38 92% 50%;
+    --status-recyclable: 0 72% 51%;
+
+    /* Light Mode Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(160 84% 39%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(142 20% 98%));
+    --gradient-hero: linear-gradient(180deg, hsl(142 30% 96%), hsl(0 0% 100%));
+    --gradient-mesh: radial-gradient(at 0% 0%, hsl(142 30% 96%) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsl(160 30% 96%) 0px, transparent 50%);
+
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-glow: 0 0 20px hsl(142 76% 36% / 0.15);
+  }
+
+  .dark {
+    /* NEON CYBERPUNK THEME - BIO-DIGITAL GLOW */
+    --background: 224 71% 4%;
+    /* Deep Charcoal/Black Blue */
+    --foreground: 210 20% 98%;
+
+    --card: 224 71% 6%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 150 100% 50%;
+    /* Neon Green (Battery Life) */
+    --primary-foreground: 224 71% 4%;
+
+    --secondary: 190 90% 50%;
+    /* Electric Cyan (Energy/Tech) */
+    --secondary-foreground: 224 71% 4%;
+
+    --muted: 224 50% 12%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 190 90% 50%;
+    /* Electric Cyan Accent */
+    --accent-foreground: 224 71% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 224 50% 12%;
+    --input: 224 50% 12%;
+    --ring: 150 100% 50%;
+
+    /* Neon Status Colors */
+    --status-healthy: 150 100% 50%;
+    /* Green */
+    --status-repairable: 190 90% 50%;
+    /* Cyan instead of Orange for "Tech" feel? No keep Orange for warning */
+    --status-recyclable: 0 100% 65%;
+
+    /* Dark Mode Gradients */
+    /* Mix Neon Green with Electric Cyan for a beautiful transition */
+    --gradient-primary: linear-gradient(135deg, hsl(150 100% 50%), hsl(190 90% 50%));
+    --gradient-card: linear-gradient(180deg, hsl(224 71% 7%), hsl(224 71% 5%));
+    --gradient-hero: linear-gradient(180deg, hsl(224 71% 4%), hsl(224 71% 8%));
+    --gradient-mesh: radial-gradient(circle at 0% 0%, hsl(150 100% 50% / 0.15), transparent 50%),
+      radial-gradient(circle at 100% 100%, hsl(190 90% 50% / 0.15), transparent 50%);
+
+    /* Neon Glow Shadows - Mixed Green and Cyan */
+    --shadow-sm: 0 0 10px hsl(150 100% 50% / 0.05);
+    --shadow-md: 0 0 20px hsl(150 100% 50% / 0.1);
+    --shadow-lg: 0 0 30px hsl(190 90% 50% / 0.15);
+    /* Blue glow for depth */
+    --shadow-glow: 0 0 25px hsl(150 100% 50% / 0.4), 0 0 10px hsl(190 90% 50% / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-4xl lg:text-5xl;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    @apply text-3xl lg:text-4xl;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    @apply text-2xl lg:text-3xl;
+  }
+
+  p {
+    @apply leading-relaxed;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Selection */
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: hsl(var(--primary-foreground));
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-primary);
+  }
+
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-mesh {
+    background-image: var(--gradient-mesh);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-lg), var(--shadow-glow);
+  }
+
+  /* Animations */
+  .animate-in-fade {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-in-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  /* Staggered delays */
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .delay-400 {
+    animation-delay: 400ms;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    @apply bg-background/60 backdrop-blur-lg border border-white/10;
+  }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm transition-all duration-300 hover:shadow-md hover:border-primary/20;
+  }
+
+  /* Status Badges */
+  .bg-status-healthy {
+    background-color: hsl(var(--status-healthy));
+  }
+
+  .bg-status-repairable {
+    background-color: hsl(var(--status-repairable));
+  }
+
+  .bg-status-recyclable {
+    background-color: hsl(var(--status-recyclable));
+  }
+
+  /* Safe Area padding for mobile devices */
+  .pb-safe {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+  
+  .pt-safe {
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}

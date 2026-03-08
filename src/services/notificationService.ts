@@ -141,8 +141,11 @@ export const notificationService = {
     try {
       logEmailLocally(email, subject, htmlContent);
 
-      const reportUrl = '/api/reports/email';
-      const fallbackUrl = '/api/notifications/email';
+      const baseUrl = NOTIFICATION_API_URL && NOTIFICATION_API_URL.includes('/notifications')
+        ? NOTIFICATION_API_URL.replace('/notifications', '')
+        : '/api';
+      const reportUrl = `${baseUrl}/reports/email`;
+      const fallbackUrl = `${NOTIFICATION_API_URL || baseUrl + '/notifications'}/email`;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (NOTIFICATION_API_KEY) headers['X-API-Key'] = NOTIFICATION_API_KEY;
       const payload = { email, subject, htmlContent, recipientName: displayName };

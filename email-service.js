@@ -41,6 +41,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Server running' });
 });
 
+// Notifications API base info endpoint (for browser tests)
+app.get('/api/notifications', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Notifications API is running. Use POST /api/notifications/email to send emails.'
+  });
+});
+
 // Send email endpoint
 app.post('/api/notifications/email', async (req, res) => {
   try {

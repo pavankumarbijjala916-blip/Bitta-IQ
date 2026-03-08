@@ -32,9 +32,13 @@ sgMail.setApiKey(SENDGRID_API_KEY);
 app.use(cors());
 app.use(express.json());
 
-// Health check endpoint
+// Root and Health check endpoints
+app.get('/', (req, res) => {
+  res.send('Bitta-IQ Backend Server is Running 🚀');
+});
+
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Email service is running' });
+  res.json({ status: 'Server running' });
 });
 
 // Send email endpoint

@@ -49,6 +49,19 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.send('Bitta-IQ Backend Server is Running 🚀');
+});
+
+// Notifications API base info endpoint (for browser tests)
+app.get('/api/notifications', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Notifications API is running. Use POST /api/notifications/email to send emails.'
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({

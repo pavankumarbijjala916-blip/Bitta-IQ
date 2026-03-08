@@ -20,7 +20,7 @@ except Exception:
     pass
 
 # Configuration
-SERVER_URL = "http://127.0.0.1:5001/api/telemetry"
+SERVER_URL = "https://bitta-iq.onrender.com/api/telemetry"
 DEVICE_NAME = socket.gethostname()
 
 # ML Data Buffer (Store last 20 minutes of data for trend analysis)

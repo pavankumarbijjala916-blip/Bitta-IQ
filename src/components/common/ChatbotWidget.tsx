@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import type { ChatMessage, ChatbotResponse, Intent } from '@/types/enhanced';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 interface ChatbotWidgetProps {
   userId?: string;
@@ -170,13 +171,14 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ userId, onClose })
 
     if (!input.trim()) return;
 
+    const currentInput = input;
     // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       conversationId: 'current',
       userId: userId || 'anonymous',
       sender: 'user',
-      text: input,
+      text: currentInput,
       timestamp: new Date(),
     };
 
@@ -184,27 +186,95 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ userId, onClose })
     setInput('');
     setIsLoading(true);
 
-    // Reduced Latency for snapping feel (simulating "thinking time" but much faster)
-    setTimeout(() => {
-      const intent = classifyIntent(input);
-      const botResponse = generateResponse(intent);
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-      const botMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        conversationId: 'current',
-        userId: 'bot',
-        sender: 'bot',
-        text: botResponse.text,
-        timestamp: new Date(),
-        metadata: {
-          intent: botResponse.intent,
-          confidence: botResponse.confidence,
-        },
-      };
+    if (apiKey) {
+      // Use Gemini API
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        
+        const systemInstruction = `You are a helpful AI assistant for BATT IQ, a battery health monitoring system. 
+        Your job is to answer questions about battery health, parameters (voltage, temperature, capacity, charge cycles), 
+        eco-quest (gamification), disposal guidance, and safe usage. Be concise, helpful, and friendly. 
+        Format your responses clearly.`;
+        
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-1.5-flash",
+          systemInstruction: systemInstruction 
+        });
 
-      setMessages((prev) => [...prev, botMessage]);
-      setIsLoading(false);
-    }, 600); // 600ms is a good balance for "reading" feel without being slow
+        // Add previous messages context
+        const history = messages
+          .filter(m => m.id !== '1') // skip the hardcoded first message if needed, or include it
+          .map(m => ({
+            role: m.sender === 'user' ? 'user' : 'model',
+            parts: [{ text: m.text }]
+          }));
+
+        const chat = model.startChat({
+          history: history,
+        });
+
+        const result = await chat.sendMessage(currentInput);
+        const responseText = result.response.text();
+
+        const botMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          conversationId: 'current',
+          userId: 'bot',
+          sender: 'bot',
+          text: responseText,
+          timestamp: new Date(),
+          metadata: {
+            intent: 'other',
+            confidence: 0.99,
+          },
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } catch (error) {
+        console.error("Gemini API Error:", error);
+        // Fallback or error message
+        const botMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          conversationId: 'current',
+          userId: 'bot',
+          sender: 'bot',
+          text: "I'm having trouble connecting to my AI brain right now. Please check your API key or network connection.",
+          timestamp: new Date(),
+          metadata: { intent: 'other', confidence: 0 },
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Fallback to static mock if no API key is set
+      setTimeout(() => {
+        const intent = classifyIntent(currentInput);
+        const botResponse = generateResponse(intent);
+        
+        let responseText = botResponse.text;
+        if (intent === 'other') {
+           responseText = "(Set VITE_GEMINI_API_KEY in .env for true AI!) " + responseText;
+        }
+
+        const botMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          conversationId: 'current',
+          userId: 'bot',
+          sender: 'bot',
+          text: responseText,
+          timestamp: new Date(),
+          metadata: {
+            intent: botResponse.intent,
+            confidence: botResponse.confidence,
+          },
+        };
+
+        setMessages((prev) => [...prev, botMessage]);
+        setIsLoading(false);
+      }, 600);
+    }
   };
 
   const handleSuggestion = (suggestion: string) => {

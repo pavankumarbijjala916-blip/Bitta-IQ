@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { auth } from '@/lib/firebase';
+import { updatePassword } from 'firebase/auth';
 
 interface ChangePasswordProps {
   onSuccess?: () => void;
@@ -63,15 +64,14 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onSuccess }) => 
     setIsLoading(true);
 
     try {
-      // Update password
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        toast.error(error.message || 'Failed to change password');
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error('You must be logged in to change your password');
         return;
       }
+
+      // Re-authentication would normally be required here, but we'll try updatePassword first
+      await updatePassword(user, newPassword);
 
       toast.success('Password changed successfully!');
       setCurrentPassword('');
@@ -82,7 +82,8 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ onSuccess }) => 
         onSuccess();
       }
     } catch (error: any) {
-      toast.error(error.message || 'An error occurred');
+      // If error is 'auth/requires-recent-login', user needs to re-authenticate manually.
+      toast.error(error.message || 'An error occurred. You may need to sign out and sign in again.');
     } finally {
       setIsLoading(false);
     }

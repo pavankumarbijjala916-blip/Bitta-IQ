@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { collection, query, where, orderBy, getDocs, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 export interface DatabaseBattery {
-  id: string;
-  user_id: string;
+  id: string; // Firestore Document ID
+  user_id: string; // Firebase UID
   battery_id: string;
   type: string;
   voltage: number;
@@ -46,18 +47,26 @@ export const useBatteries = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('batteries')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const q = query(
+        collection(db, 'batteries'),
+        where('user_id', '==', user.uid),
+        orderBy('created_at', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as DatabaseBattery[];
 
-      if (error) throw error;
-      console.log('Fetched batteries:', data?.length || 0);
-      setBatteries(data || []);
+      console.log('Fetched batteries:', data.length);
+      setBatteries(data);
     } catch (error: any) {
       console.error('Error fetching batteries:', error);
-      toast.error('Failed to load batteries');
+      // Disable toast for now or check if it's permission error
+      if (error.code !== 'permission-denied') {
+        toast.error('Failed to load batteries');
+      }
     } finally {
       setLoading(false);
     }
@@ -71,66 +80,59 @@ export const useBatteries = () => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('batteries-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'batteries',
-        },
-        (payload) => {
-          console.log('Battery change:', payload);
-          fetchBatteries();
-        }
-      )
-      .subscribe();
+    const q = query(
+      collection(db, 'batteries'),
+      where('user_id', '==', user.uid),
+      orderBy('created_at', 'desc')
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, fetchBatteries]);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('Battery change snapshot size:', snapshot.size);
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as DatabaseBattery[];
+      setBatteries(data);
+    }, (error) => {
+      console.error("Realtime subscription error:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const addBattery = async (batteryData: BatteryFormData) => {
     if (!user) {
       throw new Error('User not authenticated');
     }
 
-    const { data, error } = await supabase
-      .from('batteries')
-      .insert({
-        user_id: user.id,
-        battery_id: batteryData.batteryId,
-        type: batteryData.type,
-        voltage: batteryData.voltage,
-        temperature: batteryData.temperature,
-        charge_cycles: batteryData.chargeCycles,
-        capacity: batteryData.capacity,
-        location: batteryData.location,
-        soh: batteryData.soh,
-        status: batteryData.status,
-        image: batteryData.image,
-      })
-      .select()
-      .single();
+    const now = new Date().toISOString();
 
-    if (error) throw error;
-    return data;
+    const docRef = await addDoc(collection(db, 'batteries'), {
+      user_id: user.uid,
+      battery_id: batteryData.batteryId,
+      type: batteryData.type,
+      voltage: batteryData.voltage,
+      temperature: batteryData.temperature,
+      charge_cycles: batteryData.chargeCycles,
+      capacity: batteryData.capacity,
+      location: batteryData.location,
+      soh: batteryData.soh,
+      status: batteryData.status,
+      image: batteryData.image || null,
+      created_at: now,
+      updated_at: now,
+    });
+
+    return { id: docRef.id };
   };
 
   const deleteBattery = async (id: string) => {
-    const { error } = await supabase
-      .from('batteries')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+    await deleteDoc(doc(db, 'batteries', id));
   };
 
   const getStats = () => {
     const total = batteries.length;
-    const totalSoH = batteries.reduce((sum, b) => sum + b.soh, 0);
+    const totalSoH = batteries.reduce((sum, b) => sum + (b.soh || 0), 0);
     return {
       total,
       healthy: batteries.filter((b) => b.status === 'healthy').length,

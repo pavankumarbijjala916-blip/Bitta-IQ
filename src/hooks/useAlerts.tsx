@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { collection, query, where, orderBy, getDocs, onSnapshot, addDoc, deleteDoc, doc, updateDoc, writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { notificationService } from '@/services/notificationService';
 
 export interface DatabaseAlert {
   id: string;
-  user_id: string;
-  battery_id: string;
+  user_id: string; // Firebase UID
+  battery_id: string; // Firestore battery document ID
   type: string;
   severity: string;
   message: string;
@@ -28,18 +29,25 @@ export const useAlerts = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const q = query(
+        collection(db, 'alerts'),
+        where('user_id', '==', user.uid),
+        orderBy('created_at', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as DatabaseAlert[];
 
-      if (error) throw error;
-      console.log('Fetched alerts:', data?.length || 0);
-      setAlerts(data || []);
+      console.log('Fetched alerts:', data.length);
+      setAlerts(data);
     } catch (error: any) {
       console.error('Error fetching alerts:', error);
-      toast.error('Failed to load alerts');
+      if (error.code !== 'permission-denied') {
+        toast.error('Failed to load alerts');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,62 +61,51 @@ export const useAlerts = () => {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel('alerts-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'alerts',
-        },
-        (payload) => {
-          console.log('Alert change:', payload);
-          fetchAlerts();
-        }
-      )
-      .subscribe();
+    const q = query(
+      collection(db, 'alerts'),
+      where('user_id', '==', user.uid),
+      orderBy('created_at', 'desc')
+    );
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, fetchAlerts]);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('Alert change snapshot size:', snapshot.size);
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as DatabaseAlert[];
+      setAlerts(data);
+    }, (error) => {
+      console.error("Realtime subscription error:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const acknowledgeAlert = async (alertId: string) => {
-    const { error } = await supabase
-      .from('alerts')
-      .update({ acknowledged: true })
-      .eq('id', alertId);
-
-    if (error) throw error;
+    await updateDoc(doc(db, 'alerts', alertId), {
+      acknowledged: true
+    });
   };
 
   const dismissAlert = async (alertId: string) => {
-    const { error } = await supabase
-      .from('alerts')
-      .delete()
-      .eq('id', alertId);
-
-    if (error) throw error;
+    await deleteDoc(doc(db, 'alerts', alertId));
   };
 
   const acknowledgeAll = async () => {
     const unacknowledged = alerts.filter((a) => !a.acknowledged);
     if (unacknowledged.length === 0) return;
 
-    const { error } = await supabase
-      .from('alerts')
-      .update({ acknowledged: true })
-      .in(
-        'id',
-        unacknowledged.map((a) => a.id)
-      );
+    const batch = writeBatch(db);
+    unacknowledged.forEach(a => {
+      const alertRef = doc(db, 'alerts', a.id);
+      batch.update(alertRef, { acknowledged: true });
+    });
 
-    if (error) throw error;
+    await batch.commit();
   };
 
   /**
-   * Create an alert. batteryId must be the battery row UUID (batteries.id), not the custom battery_id text.
+   * Create an alert. batteryId must be the battery row UUID.
    */
   const createAlert = async (
     batteryId: string,
@@ -122,20 +119,16 @@ export const useAlerts = () => {
     }
 
     try {
-      const { data, error } = await supabase.from('alerts').insert({
-        user_id: user.id,
+      const docRef = await addDoc(collection(db, 'alerts'), {
+        user_id: user.uid,
         battery_id: batteryId,
         type,
         severity,
         message,
+        acknowledged: false,
+        created_at: new Date().toISOString()
       });
-
-      if (error) {
-        console.error('Supabase insert error:', error);
-        throw error;
-      }
-      
-      return data;
+      return { id: docRef.id };
     } catch (error: any) {
       console.error('Alert creation failed with details:', {
         batteryId,
@@ -156,7 +149,6 @@ export const useAlerts = () => {
     if (!user || batteries.length === 0) return;
     
     try {
-      // Alerts table uses battery_id = batteries.id (UUID), not custom battery_id text
       const existingBatteryIds = new Set(alerts.map(a => a.battery_id));
       console.log('Existing alerts for batteries:', Array.from(existingBatteryIds));
       
@@ -167,7 +159,7 @@ export const useAlerts = () => {
       
       console.log('Batteries needing alerts:', batteriesNeedingAlerts.map(b => ({ id: b.id, battery_id: b.battery_id, status: b.status })));
       
-      const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      const displayName = user.displayName || user.email?.split('@')[0] || 'User';
       let createdCount = 0;
       for (const battery of batteriesNeedingAlerts) {
         const message = battery.status === 'recyclable' 

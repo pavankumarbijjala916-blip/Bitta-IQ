@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { auth } from '@/lib/firebase';
+import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import batteriesHeroImage from '@/assets/batteries-hero.png';
 
 const ResetPassword = () => {
@@ -19,32 +20,29 @@ const ResetPassword = () => {
   const [canReset, setCanReset] = useState(false);
   const navigate = useNavigate();
 
-  // Allow reset when we have a session (from email link). Supabase sets session from URL hash, so we wait a tick and listen for auth changes.
+  const searchParams = new URLSearchParams(window.location.search);
+  const oobCode = searchParams.get('oobCode');
+
   useEffect(() => {
-    const check = async () => {
+    const checkCode = async () => {
+      if (!oobCode) {
+        setCanReset(false);
+        setIsCheckingSession(false);
+        return;
+      }
       try {
-        let { data: { session } } = await supabase.auth.getSession();
-        if (!session && typeof window !== 'undefined' && window.location.hash?.includes('access_token')) {
-          await new Promise((r) => setTimeout(r, 300));
-          const result = await supabase.auth.getSession();
-          session = result.data.session;
-        }
-        setCanReset(!!session);
-      } catch {
+        await verifyPasswordResetCode(auth, oobCode);
+        setCanReset(true);
+      } catch (error) {
+        console.error('Invalid or expired action code', error);
         setCanReset(false);
       } finally {
         setIsCheckingSession(false);
       }
     };
-    check();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setCanReset(!!session);
-      if (session) setIsCheckingSession(false);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+    checkCode();
+  }, [oobCode]);
 
-  // Password validation function
   const validatePassword = (pwd: string) => {
     const hasUpperCase = /[A-Z]/.test(pwd);
     const hasLowerCase = /[a-z]/.test(pwd);
@@ -80,21 +78,18 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!oobCode) {
+      toast.error('Invalid reset link. Please request a new one.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
-      });
-
-      if (error) {
-        toast.error(error.message || 'Failed to reset password');
-        return;
-      }
+      await confirmPasswordReset(auth, oobCode, password);
 
       setIsSuccess(true);
       toast.success('Password reset successfully!');
-      await supabase.auth.signOut();
       setTimeout(() => {
         navigate('/login');
       }, 3000);
@@ -197,7 +192,7 @@ const ResetPassword = () => {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm text-foreground">
-                  <strong>How to change your password:</strong> Type your new password in the two fields below, then click &quot;Reset Password&quot;. You will then be able to sign in with this new password.
+                  <strong>How to change your password:</strong> Type your new password in the two fields below, then click "Reset Password". You will then be able to sign in with this new password.
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Choose a strong password (see requirements below).
@@ -335,3 +330,4 @@ const ResetPassword = () => {
 };
 
 export default ResetPassword;
+

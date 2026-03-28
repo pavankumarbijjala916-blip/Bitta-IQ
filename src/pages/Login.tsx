@@ -54,12 +54,24 @@ const Login = () => {
     setIsLoading(false);
     
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password');
-      } else if (error.message.includes('Email not confirmed')) {
-        toast.error('Please verify your email address');
+      const msg = error.message || '';
+      if (msg.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password. Please check and try again.');
+      } else if (msg.includes('Email not confirmed')) {
+        toast.error('Please verify your email address before signing in.');
+      } else if (
+        msg.toLowerCase().includes('failed to fetch') ||
+        msg.toLowerCase().includes('networkerror') ||
+        msg.toLowerCase().includes('fetch') ||
+        msg.toLowerCase().includes('load failed') ||
+        msg.toLowerCase().includes('err_name_not_resolved')
+      ) {
+        toast.error(
+          '⚠️ Cannot connect to the server. The backend service may be temporarily down. Please try again later or contact support.',
+          { duration: 6000 }
+        );
       } else {
-        toast.error(error.message || 'Failed to sign in');
+        toast.error(msg || 'Failed to sign in. Please try again.');
       }
       return;
     }

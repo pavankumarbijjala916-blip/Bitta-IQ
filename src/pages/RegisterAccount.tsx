@@ -81,10 +81,21 @@ const RegisterAccount = () => {
     setIsLoading(false);
     
     if (error) {
-      if (error.message.includes('already registered')) {
+      const msg = error.message || '';
+      if (msg.includes('already registered')) {
         toast.error('This email is already registered. Please sign in instead.');
+      } else if (
+        msg.toLowerCase().includes('failed to fetch') ||
+        msg.toLowerCase().includes('networkerror') ||
+        msg.toLowerCase().includes('fetch') ||
+        msg.toLowerCase().includes('load failed')
+      ) {
+        toast.error(
+          '⚠️ Cannot connect to the server. The backend service may be temporarily down. Please try again later or contact support.',
+          { duration: 6000 }
+        );
       } else {
-        toast.error(error.message || 'Failed to create account');
+        toast.error(msg || 'Failed to create account. Please try again.');
       }
       return;
     }
